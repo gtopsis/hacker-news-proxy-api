@@ -12,8 +12,23 @@ const isFulfilled = <T>(
   input: PromiseSettledResult<T>
 ): input is PromiseFulfilledResult<T> => input.status === "fulfilled";
 
-const getPopularNews = () => {};
-const getRecentNews = () => {};
+const getPopularNews = (stories: Story[]) => {
+  const compareStoriesScoresDesc = (story1: Story, story2: Story) =>
+    story2.score - story1.score;
+
+  const sortedStoriesByScore = stories.sort(compareStoriesScoresDesc);
+
+  return sortedStoriesByScore.splice(0, 10);
+};
+
+const getRecentNews = (stories: Story[]) => {
+  const compareStoriesCreationDateDesc = (story1: Story, story2: Story) =>
+    story2.time - story1.time;
+
+  const sortedStoriesByScore = stories.sort(compareStoriesCreationDateDesc);
+
+  return sortedStoriesByScore.splice(0, 10);
+};
 
 const fetchStoriesIds = async () => {
   const storiesIdsResponse = await http.get<StoriesIds>(
@@ -35,11 +50,6 @@ const getNews = async (newsType: NewsType) => {
 
     let allStories: Story[] = [];
 
-    const compareStoriesScoresDesc = (story1: Story, story2: Story) =>
-      story2.score - story1.score;
-    const compareStoriesCreationDateDesc = (story1: Story, story2: Story) =>
-      story2.time - story1.time;
-
     const chunks = chunk(storiesIds, 10);
 
     for (const chunk of chunks) {
@@ -56,13 +66,9 @@ const getNews = async (newsType: NewsType) => {
       allStories = concat(allStories, stories);
     }
 
-    const sortedStoriesByScore = allStories.sort(
-      newsType === NewsType.POPULAR
-        ? compareStoriesScoresDesc
-        : compareStoriesCreationDateDesc
-    );
-
-    return sortedStoriesByScore.slice(0, 10);
+    return newsType === NewsType.POPULAR
+      ? getPopularNews(allStories)
+      : getRecentNews(allStories);
   } catch (error) {
     logger.error(error);
   }
