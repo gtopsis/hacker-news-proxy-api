@@ -35,8 +35,11 @@ const getNews = async (newsType: NewsType) => {
 
     let allStories: Story[] = [];
 
-    const compareScores = (story1: Story, story2: Story) =>
+    const compareStoriesScoresDesc = (story1: Story, story2: Story) =>
       story2.score - story1.score;
+    const compareStoriesCreationDateDesc = (story1: Story, story2: Story) =>
+      story2.time - story1.time;
+
     const chunks = chunk(storiesIds, 10);
 
     for (const chunk of chunks) {
@@ -53,7 +56,11 @@ const getNews = async (newsType: NewsType) => {
       allStories = concat(allStories, stories);
     }
 
-    const sortedStoriesByScore = allStories.sort(compareScores);
+    const sortedStoriesByScore = allStories.sort(
+      newsType === NewsType.POPULAR
+        ? compareStoriesScoresDesc
+        : compareStoriesCreationDateDesc
+    );
 
     return sortedStoriesByScore.slice(0, 10);
   } catch (error) {

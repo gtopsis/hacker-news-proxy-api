@@ -24,12 +24,12 @@ const getNewsController = async (
     });
   }
 
-  const news = await getNews(newsType as NewsType);
+  const news = await getNews(newsType as NewsType, newsType);
 
   response.status(HTTP_STATUS_CODE.SUCCESS).json(news);
 };
 
-const getHighlighNewController = (
+const getHighlightNewController = (
   request: Request,
   response: Response,
   next: NextFunction
@@ -49,4 +49,8 @@ const refreshNewsController = (
   response.status(HTTP_STATUS_CODE.SUCCESS).json();
 };
 
-export { getNewsController, getHighlighNewController, refreshNewsController };
+export {
+  getNewsController,
+  getHighlightNewController as getHighlighNewController,
+  refreshNewsController,
+};
