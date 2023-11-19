@@ -2,8 +2,8 @@ import express, { Express, Request, Response, Application } from "express";
 import dotenv from "dotenv";
 const helmet = require("helmet");
 import cors from "cors";
-import { newsRouter } from "./controllers/router";
-import { httpLogger } from "./utils/httpLogger";
+import newsRouter from "./router";
+import httpLogger from "./utils/httpLogger";
 
 //For env File
 dotenv.config();
@@ -15,6 +15,6 @@ app.use(cors());
 app.use(express.json());
 app.use(httpLogger);
 
-app.use(newsRouter);
+app.use("/news", newsRouter);
 
 export default app;
