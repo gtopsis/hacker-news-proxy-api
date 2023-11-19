@@ -20,7 +20,7 @@ const getNewsController = (
     return next({
       error:
         "Param type should be any of the following values: " +
-        validTypes.join(","),
+        Object.values(NewsType).join(","),
     });
   }
 
