@@ -24,17 +24,17 @@ const getNewsController = async (
     });
   }
 
-  const news = await getNews(newsType as NewsType, newsType);
+  const news = await getNews(newsType as NewsType);
 
   response.status(HTTP_STATUS_CODE.SUCCESS).json(news);
 };
 
-const getHighlightNewController = (
+const getHighlightNewController = async (
   request: Request,
   response: Response,
   next: NextFunction
 ) => {
-  const highlightNew = getHighlightNew();
+  const highlightNew = await getHighlightNew();
 
   response.status(HTTP_STATUS_CODE.SUCCESS).json(highlightNew);
 };

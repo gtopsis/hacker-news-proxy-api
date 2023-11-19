@@ -2,6 +2,7 @@ import { NewsType, StoriesIds, Story } from "../types/interfaces";
 import { http } from "../utils/http";
 import logger from "../utils/logger";
 import { chunk, concat } from "lodash";
+import { load } from "cheerio";
 
 // credits: https://stackoverflow.com/questions/64928212/how-to-use-promise-allsettled-with-typescript
 const isRejected = (
@@ -43,6 +44,35 @@ const fetchStory = async (id: string) => {
   return story;
 };
 
+const getMetadata = async (url: string) => {
+  const { data } = await http.get(url);
+  const $ = load(data);
+
+  const title = $('meta[property="title"]')?.text();
+  const description = $("meta[name=description]")?.attr("content");
+  const keywords = $("meta[name=keywords]")?.attr("content");
+  const author = $("meta[name=author]")?.attr("content");
+  const viewport = $("meta[name=viewport]")?.attr("content");
+  const ogTitle = $("meta[name=og:title]")?.attr("content");
+  const ogURL = $("meta[name=og:URL]")?.attr("content");
+  const ogImage = $("meta[name=og:image]")?.attr("content");
+  const ogDescription = $("meta[name=og:Description]")?.attr("content");
+  const siteName = $('meta[property="og:site_name"]')?.attr("content");
+
+  return {
+    title,
+    description,
+    keywords,
+    author,
+    viewport,
+    ogTitle,
+    ogURL,
+    ogImage,
+    ogDescription,
+    siteName,
+  };
+};
+
 const getNews = async (newsType: NewsType) => {
   try {
     const storiesIdsResponse = await fetchStoriesIds();
@@ -74,8 +104,28 @@ const getNews = async (newsType: NewsType) => {
   }
 };
 
-const getHighlightNew = () => {
-  return {};
+const getHighlightNew = async () => {
+  try {
+    const storiesIdsResponse = await fetchStoriesIds();
+    const storiesIds = storiesIdsResponse.data;
+
+    const randomIndex = Math.floor(Math.random() * storiesIds.length);
+    const randomStoryId = storiesIds[randomIndex];
+
+    const storyResponse = await fetchStory(randomStoryId);
+
+    const story = storyResponse.data;
+
+    const metadata = await getMetadata(story.url);
+
+    return { story, metadata };
+  } catch (error) {
+    console.log(
+      "🚀 ~ file: NewsService.ts:105 ~ getHighlightNew ~ error:",
+      error
+    );
+    logger.error(error);
+  }
 };
 
 const refreshNews = () => {
