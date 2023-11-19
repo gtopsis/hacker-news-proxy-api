@@ -8,7 +8,7 @@ enum HTTP_STATUS_CODE {
   WRONG_REQUEST = 404,
 }
 
-const getNewsController = (
+const getNewsController = async (
   request: Request,
   response: Response,
   next: NextFunction
@@ -24,7 +24,7 @@ const getNewsController = (
     });
   }
 
-  const news = getNews(newsType as NewsType);
+  const news = await getNews(newsType as NewsType);
 
   response.status(HTTP_STATUS_CODE.SUCCESS).json(news);
 };

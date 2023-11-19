@@ -81,6 +81,10 @@ class Http {
   // Handle global app errors
   // We can handle generic app errors depending on the status code
   private handleError(error: any) {
+    console.log(
+      "🚀 ~ file: http.ts:84 ~ Http ~ handleError ~ error:",
+      error.data
+    );
     const { status } = error;
 
     switch (status) {
