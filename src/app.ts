@@ -5,16 +5,17 @@ import cors from "cors";
 import newsRouter from "./router";
 import httpLogger from "./utils/httpLogger";
 
-//For env File
 dotenv.config();
 
 const app: Application = express();
 
+// middlewares
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(httpLogger);
 
+// routes
 app.use("/news", newsRouter);
 
 export default app;

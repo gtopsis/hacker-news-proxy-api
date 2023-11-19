@@ -1,9 +1,10 @@
 import express, { NextFunction } from "express";
 import {
-  fetchHighlighNewController,
-  fetchNewsController,
+  getHighlighNewController,
   refreshNewsController,
-} from "./controllers/newsController";
+  getNewsController,
+} from "./controllers/NewsController";
+
 const newsRouter = express.Router();
 enum Routes {
   FETCH_NEWS = "/",
@@ -11,9 +12,9 @@ enum Routes {
   REFRESH_NEWS = "/refresh",
 }
 
-newsRouter.get(Routes.FETCH_NEWS, fetchNewsController);
+newsRouter.get(Routes.FETCH_NEWS, getNewsController);
 
-newsRouter.get(Routes.FETCH_HIGHLIGHT_NEW, fetchHighlighNewController);
+newsRouter.get(Routes.FETCH_HIGHLIGHT_NEW, getHighlighNewController);
 
 newsRouter.post(Routes.REFRESH_NEWS, refreshNewsController);
 
