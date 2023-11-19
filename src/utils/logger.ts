@@ -6,4 +6,4 @@ const logConfiguration = {
 
 const logger = winston.createLogger(logConfiguration);
 
-export { logger };
+export default logger;

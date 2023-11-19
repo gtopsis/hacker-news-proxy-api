@@ -8,6 +8,6 @@ const accessLogStream = fs.createWriteStream(
   { flags: "a" }
 );
 
-export const httpLogger = morgan(
-  morgan("combined", { stream: accessLogStream })
-);
+const httpLogger = morgan(morgan("combined", { stream: accessLogStream }));
+
+export default httpLogger;
