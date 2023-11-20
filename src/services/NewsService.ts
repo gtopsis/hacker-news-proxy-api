@@ -3,6 +3,7 @@ import { http } from "../utils/http";
 import logger from "../utils/logger";
 import { chunk, concat } from "lodash";
 import { load } from "cheerio";
+import StoryModel from "../models/Story";
 
 // credits: https://stackoverflow.com/questions/64928212/how-to-use-promise-allsettled-with-typescript
 const isRejected = (
@@ -19,16 +20,20 @@ const getPopularStories = (stories: Story[]) => {
 
   const sortedStoriesByScore = stories.sort(compareStoriesScoresDesc);
 
-  return sortedStoriesByScore.splice(0, 10);
+  return sortedStoriesByScore
+    .splice(0, 10)
+    .map((story) => ({ ...story, highlightedFeature: "popular" }));
 };
 
 const getRecentStories = (stories: Story[]) => {
   const compareStoriesCreationDateDesc = (story1: Story, story2: Story) =>
     story2.time - story1.time;
 
-  const sortedStoriesByScore = stories.sort(compareStoriesCreationDateDesc);
+  const sortedStoriesByTime = stories.sort(compareStoriesCreationDateDesc);
 
-  return sortedStoriesByScore.splice(0, 10);
+  return sortedStoriesByTime
+    .splice(0, 10)
+    .map((story) => ({ ...story, highlightedFeature: "recent" }));
 };
 
 const fetchStoriesIds = async () => {
@@ -82,7 +87,7 @@ const getStories = async (filter: NewsType) => {
   try {
     const storiesIds = await fetchStoriesIds();
 
-    let allStoriesSet: Story[][] = [];
+    let allFetchedStoriesSets: Story[][] = [];
 
     const chunks = chunk(storiesIds, 10);
 
@@ -95,13 +100,18 @@ const getStories = async (filter: NewsType) => {
         .filter(isFulfilled)
         .map((s) => s?.value.data);
 
-      allStoriesSet.push(storiesSet);
+      allFetchedStoriesSets.push(storiesSet);
     }
 
-    const allStories = allStoriesSet.flat();
-    return filter === NewsType.POPULAR
-      ? getPopularStories(allStories)
-      : getRecentStories(allStories);
+    const allFetchedStories = allFetchedStoriesSets.flat();
+    const filteredFetchedStories =
+      filter === NewsType.POPULAR
+        ? getPopularStories(allFetchedStories)
+        : getRecentStories(allFetchedStories);
+
+    const storedStories = await StoryModel.insertMany(filteredFetchedStories);
+
+    return storedStories;
   } catch (error) {
     logger.error(error);
   }

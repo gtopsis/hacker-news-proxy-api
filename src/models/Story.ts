@@ -34,10 +34,14 @@ const storySchema: Schema = new Schema(
     },
     url: {
       type: String,
+    },
+    highlightedFeature: {
+      type: String,
+      enum: ["recent", "popular"],
       required: true,
     },
   },
   { timestamps: true }
 );
 
-export default model<Story>("Story", storySchema);
+export default model<Story>("StoryModel", storySchema);
