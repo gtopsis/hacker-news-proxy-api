@@ -1,6 +1,10 @@
 import { NextFunction } from "express";
 import { Request, Response } from "express";
-import { getHighlightNew, getNews, refreshNews } from "../services/NewsService";
+import {
+  getHighlightStory,
+  getStories,
+  refreshStories,
+} from "../services/NewsService";
 import { NewsType } from "../types/interfaces";
 
 enum HTTP_STATUS_CODE {
@@ -24,7 +28,7 @@ const getNewsController = async (
     });
   }
 
-  const news = await getNews(newsType as NewsType);
+  const news = await getStories(newsType as NewsType);
 
   response.status(HTTP_STATUS_CODE.SUCCESS).json(news);
 };
@@ -34,7 +38,7 @@ const getHighlightNewController = async (
   response: Response,
   next: NextFunction
 ) => {
-  const highlightNew = await getHighlightNew();
+  const highlightNew = await getHighlightStory();
 
   response.status(HTTP_STATUS_CODE.SUCCESS).json(highlightNew);
 };
@@ -44,7 +48,7 @@ const refreshNewsController = (
   response: Response,
   next: NextFunction
 ) => {
-  refreshNews();
+  refreshStories();
 
   response.status(HTTP_STATUS_CODE.SUCCESS).json();
 };

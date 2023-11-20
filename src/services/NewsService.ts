@@ -13,7 +13,7 @@ const isFulfilled = <T>(
   input: PromiseSettledResult<T>
 ): input is PromiseFulfilledResult<T> => input.status === "fulfilled";
 
-const getPopularNews = (stories: Story[]) => {
+const getPopularStories = (stories: Story[]) => {
   const compareStoriesScoresDesc = (story1: Story, story2: Story) =>
     story2.score - story1.score;
 
@@ -22,7 +22,7 @@ const getPopularNews = (stories: Story[]) => {
   return sortedStoriesByScore.splice(0, 10);
 };
 
-const getRecentNews = (stories: Story[]) => {
+const getRecentStories = (stories: Story[]) => {
   const compareStoriesCreationDateDesc = (story1: Story, story2: Story) =>
     story2.time - story1.time;
 
@@ -78,7 +78,7 @@ const getStoryArticleMetadata = async (url: string) => {
   };
 };
 
-const getNews = async (newsType: NewsType) => {
+const getStories = async (filter: NewsType) => {
   try {
     const storiesIds = await fetchStoriesIds();
 
@@ -98,15 +98,15 @@ const getNews = async (newsType: NewsType) => {
       allStories.push(stories);
     }
 
-    return newsType === NewsType.POPULAR
-      ? getPopularNews(allStories)
-      : getRecentNews(allStories);
+    return filter === NewsType.POPULAR
+      ? getPopularStories(allStories)
+      : getRecentStories(allStories);
   } catch (error) {
     logger.error(error);
   }
 };
 
-const getHighlightNew = async () => {
+const getHighlightStory = async () => {
   try {
     const storiesIds = await fetchStoriesIds();
 
@@ -127,8 +127,8 @@ const getHighlightNew = async () => {
   }
 };
 
-const refreshNews = () => {
+const refreshStories = () => {
   return;
 };
 
-export { getNews, getHighlightNew, refreshNews };
+export { getStories, getHighlightStory, refreshStories };
