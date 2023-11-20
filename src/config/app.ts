@@ -1,11 +1,8 @@
 import express, { Express, Request, Response, Application } from "express";
-import dotenv from "dotenv";
 const helmet = require("helmet");
 import cors from "cors";
 import newsRouter from "../router";
 import httpLogger from "../utils/httpLogger";
-
-dotenv.config();
 
 const app: Application = express();
 

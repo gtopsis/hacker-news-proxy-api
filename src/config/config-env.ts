@@ -1,3 +1,7 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
 const {
   HACKER_NEWS_HOST: host = "https://hacker-news.firebaseio.com",
   HACKER_NEWS_API_VERSION: apiVersion = "v0",
@@ -9,7 +13,10 @@ const {
   MONGODB_HOST,
 } = process.env;
 
-const BDConnectionURI = `mongodb://${MONGODB_USER}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_DOCKER_PORT}/${MONGODB_DATABASE}?authSource=admin`;
+const BDConnectionURI =
+  process.env.NODE_ENV === "development"
+    ? "mongodb://localhost:27017"
+    : `mongodb://${MONGODB_USER}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_DOCKER_PORT}/${MONGODB_DATABASE}?authSource=admin`;
 
 const baseURL = `${host}/${apiVersion}`;
 

@@ -4,7 +4,7 @@ import {
   getHighlightStory,
   getStories,
   refreshStories,
-} from "../services/NewsService";
+} from "../services/StoriesService";
 import { NewsType } from "../types/interfaces";
 
 enum HTTP_STATUS_CODE {

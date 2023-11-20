@@ -4,9 +4,8 @@ import { BDConnectionURI } from "./config-env";
 
 export const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(BDConnectionURI, {});
-
-    logger.info(`MongoDB Connected: {conn.connection.host}`);
+    logger.info("Trying to connect to database to: " + BDConnectionURI);
+    await mongoose.connect(BDConnectionURI, {});
   } catch (error: any) {
     console.error(error.message);
     process.exit(1);

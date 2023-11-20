@@ -16,3 +16,9 @@ export interface Story {
   type: string;
   url: string;
 }
+
+export interface ContentValidityTimestamps {
+  recentStoriesLastUpdated: Date;
+  popularStoriesLastUpdated: Date;
+  highlightStoryLastUpdated: Date;
+}

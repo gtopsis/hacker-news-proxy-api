@@ -1,9 +1,15 @@
-import { NewsType, StoriesIds, Story } from "../types/interfaces";
+import {
+  ContentValidityTimestamps,
+  NewsType,
+  StoriesIds,
+  Story,
+} from "../types/interfaces";
 import { http } from "../utils/http";
 import logger from "../utils/logger";
 import { chunk, concat } from "lodash";
 import { load } from "cheerio";
 import StoryModel from "../models/Story";
+import ContentValidityTimestampsModel from "../models/ContentValidityTimestamps";
 
 // credits: https://stackoverflow.com/questions/64928212/how-to-use-promise-allsettled-with-typescript
 const isRejected = (
@@ -83,12 +89,43 @@ const getStoryArticleMetadata = async (url: string) => {
   };
 };
 
+const diffMinutes = (dt2: Date, dt1: Date) => {
+  const diff = (dt2.getTime() - dt1.getTime()) / 1000 / 60;
+
+  return Math.abs(Math.round(diff));
+};
+
+const checkIfContentHasBeenExpired = (
+  from: Date,
+  expirationDate: Date
+): boolean => {
+  const contentTTLMinutes = 5;
+
+  return diffMinutes(expirationDate, from) > contentTTLMinutes;
+};
+
 const getStories = async (filter: NewsType) => {
   try {
+    const now = new Date();
+
+    const timestamps = await ContentValidityTimestampsModel.find({});
+
+    const contentLastUpdateDate =
+      filter === NewsType.POPULAR
+        ? timestamps[0].popularStoriesLastUpdated
+        : timestamps[0].recentStoriesLastUpdated;
+    const isContentObsolete = checkIfContentHasBeenExpired(
+      now,
+      contentLastUpdateDate
+    );
+
+    if (!isContentObsolete) {
+      return await StoryModel.find({ highlightedFeature: filter });
+    }
+
     const storiesIds = await fetchStoriesIds();
 
     let allFetchedStoriesSets: Story[][] = [];
-
     const chunks = chunk(storiesIds, 10);
 
     for (const chunk of chunks) {
@@ -111,6 +148,13 @@ const getStories = async (filter: NewsType) => {
 
     const storedStories = await StoryModel.insertMany(filteredFetchedStories);
 
+    if (filter === NewsType.POPULAR) {
+      timestamps[0].popularStoriesLastUpdated = now;
+    } else {
+      timestamps[0].recentStoriesLastUpdated = now;
+    }
+
+    await timestamps[0].save();
     return storedStories;
   } catch (error) {
     logger.error(error);

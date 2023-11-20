@@ -2,10 +2,30 @@ import app from "./config/app";
 import logger from "./utils/logger";
 import { port } from "./config/config-env";
 import { connectDB } from "./config/db";
+import ContentValidityTimestampsModel from "./models/ContentValidityTimestamps";
+
+console.log(process.env.MONGODB_DOCKER_PORT);
+
+const createContentValidityTimestamps = async () => {
+  const existingDocs = await ContentValidityTimestampsModel.find({});
+
+  if (existingDocs.length === 0) {
+    const contentValidityTimestamps = new ContentValidityTimestampsModel({
+      recentStoriesLastUpdated: null,
+      popularStoriesLastUpdated: null,
+      highlightStoryLastUpdated: null,
+    });
+
+    await ContentValidityTimestampsModel.create(contentValidityTimestamps);
+  }
+};
 
 const server = app.listen(port, async () => {
   logger.info(`Listening on port ${port}`);
-  connectDB();
+
+  await connectDB();
+
+  await createContentValidityTimestamps();
 });
 
 process.on("unhandledRejection", (error, promise) => {
