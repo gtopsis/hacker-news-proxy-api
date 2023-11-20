@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
-import { baseURL } from "../utils/config";
+import { baseURL } from "../config/config-env";
 
 enum StatusCode {
   Unauthorized = 401,

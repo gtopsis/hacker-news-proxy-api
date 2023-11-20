@@ -82,7 +82,7 @@ const getStories = async (filter: NewsType) => {
   try {
     const storiesIds = await fetchStoriesIds();
 
-    let allStories: Story[] = [];
+    let allStoriesSet: Story[][] = [];
 
     const chunks = chunk(storiesIds, 10);
 
@@ -91,13 +91,14 @@ const getStories = async (filter: NewsType) => {
         chunk.map(fetchStoryPromise)
       );
 
-      const stories = storiesResponse
+      const storiesSet = storiesResponse
         .filter(isFulfilled)
         .map((s) => s?.value.data);
 
-      allStories.push(stories);
+      allStoriesSet.push(storiesSet);
     }
 
+    const allStories = allStoriesSet.flat();
     return filter === NewsType.POPULAR
       ? getPopularStories(allStories)
       : getRecentStories(allStories);
