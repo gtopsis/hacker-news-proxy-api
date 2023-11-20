@@ -36,15 +36,20 @@ const fetchStoriesIds = async () => {
     "/topstories.json?print=pretty"
   );
 
-  return storiesIdsResponse;
+  return storiesIdsResponse.data;
 };
 
-const fetchStory = async (id: string) => {
-  const story = await http.get<Story>(`/item/${id}.json?print=pretty`);
-  return story;
+const fetchStoryPromise = (storyId: string) => {
+  return http.get<Story>(`/item/${storyId}.json?print=pretty`);
 };
 
-const getMetadata = async (url: string) => {
+const fetchStoryById = async (id: string) => {
+  const storyResponse = await fetchStoryPromise(id);
+
+  return storyResponse.data;
+};
+
+const getStoryArticleMetadata = async (url: string) => {
   const { data } = await http.get(url);
   const $ = load(data);
 
@@ -75,8 +80,7 @@ const getMetadata = async (url: string) => {
 
 const getNews = async (newsType: NewsType) => {
   try {
-    const storiesIdsResponse = await fetchStoriesIds();
-    const storiesIds = storiesIdsResponse.data;
+    const storiesIds = await fetchStoriesIds();
 
     let allStories: Story[] = [];
 
@@ -84,16 +88,14 @@ const getNews = async (newsType: NewsType) => {
 
     for (const chunk of chunks) {
       const storiesResponse = await Promise.allSettled(
-        chunk.map((storyId: string) =>
-          http.get<Story>(`/item/${storyId}.json?print=pretty`)
-        )
+        chunk.map(fetchStoryPromise)
       );
 
       const stories = storiesResponse
         .filter(isFulfilled)
         .map((s) => s?.value.data);
 
-      allStories = concat(allStories, stories);
+      allStories.push(stories);
     }
 
     return newsType === NewsType.POPULAR
@@ -106,17 +108,14 @@ const getNews = async (newsType: NewsType) => {
 
 const getHighlightNew = async () => {
   try {
-    const storiesIdsResponse = await fetchStoriesIds();
-    const storiesIds = storiesIdsResponse.data;
+    const storiesIds = await fetchStoriesIds();
 
     const randomIndex = Math.floor(Math.random() * storiesIds.length);
     const randomStoryId = storiesIds[randomIndex];
 
-    const storyResponse = await fetchStory(randomStoryId);
+    const story = await fetchStoryById(randomStoryId);
 
-    const story = storyResponse.data;
-
-    const metadata = await getMetadata(story.url);
+    const metadata = await getStoryArticleMetadata(story.url);
 
     return { story, metadata };
   } catch (error) {
