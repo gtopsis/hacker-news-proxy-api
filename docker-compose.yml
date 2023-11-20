@@ -3,7 +3,7 @@ services:
   mongodb:
     container_name: hacker_news_proxy-api_db_container
     image: mongo:5.0.2
-    restart: unless-stopped
+    restart: always
     env_file: ./.env
     environment:
       - MONGO_INITDB_ROOT_USERNAME=$MONGODB_USER
@@ -18,7 +18,7 @@ services:
     depends_on:
       - mongodb
     build: .
-    restart: unless-stopped
+    restart: always
     env_file: ./.env
     ports:
       - $NODE_LOCAL_PORT:$NODE_DOCKER_PORT
