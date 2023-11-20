@@ -3,3 +3,4 @@ dist
 .env
 src/access.log
 src/utils/access.log
+.vscode
