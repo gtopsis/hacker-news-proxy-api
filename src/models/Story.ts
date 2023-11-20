@@ -37,8 +37,20 @@ const storySchema: Schema = new Schema(
     },
     highlightedFeature: {
       type: String,
-      enum: ["recent", "popular"],
+      enum: ["recent", "popular", "highlight"],
       required: true,
+    },
+    metadata: {
+      title: String,
+      description: String,
+      keywords: String,
+      author: String,
+      viewport: String,
+      ogTitle: String,
+      ogURL: String,
+      ogImage: String,
+      ogDescription: String,
+      siteName: String,
     },
   },
   { timestamps: true }

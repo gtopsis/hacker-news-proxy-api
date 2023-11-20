@@ -3,6 +3,7 @@ import {
   NewsType,
   StoriesIds,
   Story,
+  StorySourceArticleMetadata,
 } from "../types/interfaces";
 import { http } from "../utils/http";
 import logger from "../utils/logger";
@@ -60,7 +61,9 @@ const fetchStoryById = async (id: string) => {
   return storyResponse.data;
 };
 
-const getStoryArticleMetadata = async (url: string) => {
+const getStoryArticleMetadata = async (
+  url: string
+): Promise<Partial<StorySourceArticleMetadata>> => {
   const { data } = await http.get(url);
   const $ = load(data);
 
@@ -95,13 +98,15 @@ const diffMinutes = (dt2: Date, dt1: Date) => {
   return Math.abs(Math.round(diff));
 };
 
-const checkIfContentHasBeenExpired = (
+const doDatesDiffMoreThan = (
   from: Date,
-  expirationDate: Date
-): boolean => {
-  const contentTTLMinutes = 5;
-
-  return diffMinutes(expirationDate, from) > contentTTLMinutes;
+  expirationDate: Date,
+  acceptedDiffInMinutes: number = 5
+): boolean | null => {
+  if (!from || !expirationDate) {
+    return null;
+  }
+  return diffMinutes(expirationDate, from) > acceptedDiffInMinutes;
 };
 
 const getStories = async (filter: NewsType) => {
@@ -114,12 +119,9 @@ const getStories = async (filter: NewsType) => {
       filter === NewsType.POPULAR
         ? timestamps[0].popularStoriesLastUpdated
         : timestamps[0].recentStoriesLastUpdated;
-    const isContentObsolete = checkIfContentHasBeenExpired(
-      now,
-      contentLastUpdateDate
-    );
+    const isContentObsolete = doDatesDiffMoreThan(now, contentLastUpdateDate);
 
-    if (!isContentObsolete) {
+    if (isContentObsolete === false) {
       return await StoryModel.find({ highlightedFeature: filter });
     }
 
@@ -163,16 +165,43 @@ const getStories = async (filter: NewsType) => {
 
 const getHighlightStory = async () => {
   try {
+    const now = new Date();
+
+    const timestamps = await ContentValidityTimestampsModel.find({});
+
+    const highlightedStoryTTL = 60;
+    const contentLastUpdateDate = timestamps[0].highlightStoryLastUpdated;
+    const isContentObsolete = doDatesDiffMoreThan(
+      now,
+      contentLastUpdateDate,
+      highlightedStoryTTL
+    );
+
+    if (isContentObsolete === false) {
+      return await StoryModel.find({ highlightedFeature: "highlight" });
+    }
+
     const storiesIds = await fetchStoriesIds();
 
     const randomIndex = Math.floor(Math.random() * storiesIds.length);
     const randomStoryId = storiesIds[randomIndex];
 
     const story = await fetchStoryById(randomStoryId);
-
     const metadata = await getStoryArticleMetadata(story.url);
 
-    return { story, metadata };
+    await StoryModel.deleteMany({
+      highlightedFeature: "highlight",
+    });
+    const newHighlightStory = await StoryModel.create({
+      ...story,
+      metadata,
+      highlightedFeature: "highlight",
+    });
+
+    timestamps[0].highlightStoryLastUpdated = now;
+    await timestamps[0].save();
+
+    return newHighlightStory;
   } catch (error) {
     logger.error(error);
   }
