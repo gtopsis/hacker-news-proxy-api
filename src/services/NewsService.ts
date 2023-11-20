@@ -130,10 +130,6 @@ const getHighlightStory = async () => {
 
     return { story, metadata };
   } catch (error) {
-    console.log(
-      "🚀 ~ file: NewsService.ts:105 ~ getHighlightNew ~ error:",
-      error
-    );
     logger.error(error);
   }
 };
