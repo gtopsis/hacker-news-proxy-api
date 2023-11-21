@@ -1,6 +1,7 @@
 export enum NewsType {
   RECENT = "recent",
   POPULAR = "popular",
+  HIGHLIGHT = "highlight",
 }
 
 export type StoriesIds = string[];

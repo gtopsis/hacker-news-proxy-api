@@ -17,8 +17,8 @@ const getNewsController = async (
   response: Response,
   next: NextFunction
 ) => {
-  const newsType = request.query.type as string;
-  if (!newsType || !Object.values(NewsType).includes(newsType as NewsType)) {
+  const newsType = request.query.type as NewsType;
+  if (newsType !== NewsType.POPULAR && newsType !== NewsType.RECENT) {
     response.status(HTTP_STATUS_CODE.WRONG_REQUEST);
 
     return next({
@@ -28,7 +28,7 @@ const getNewsController = async (
     });
   }
 
-  const news = await getStories(newsType as NewsType);
+  const news = await getStories(newsType);
 
   response.status(HTTP_STATUS_CODE.SUCCESS).json(news);
 };
@@ -43,12 +43,12 @@ const getHighlightNewController = async (
   response.status(HTTP_STATUS_CODE.SUCCESS).json(highlightNew);
 };
 
-const refreshNewsController = (
+const refreshNewsController = async (
   request: Request,
   response: Response,
   next: NextFunction
 ) => {
-  refreshStories();
+  await refreshStories();
 
   response.status(HTTP_STATUS_CODE.SUCCESS).json();
 };

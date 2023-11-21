@@ -7,21 +7,13 @@ import {
 } from "../types/interfaces";
 import { http } from "../utils/http";
 import logger from "../utils/logger";
-import { chunk, concat } from "lodash";
+import { chunk } from "lodash";
 import { load } from "cheerio";
 import StoryModel from "../models/Story";
 import ContentValidityTimestampsModel from "../models/ContentValidityTimestamps";
+import { isFulfilled, isRejected } from "../utils/promises";
 
-// credits: https://stackoverflow.com/questions/64928212/how-to-use-promise-allsettled-with-typescript
-const isRejected = (
-  input: PromiseSettledResult<unknown>
-): input is PromiseRejectedResult => input.status === "rejected";
-
-const isFulfilled = <T>(
-  input: PromiseSettledResult<T>
-): input is PromiseFulfilledResult<T> => input.status === "fulfilled";
-
-const getPopularStories = (stories: Story[]) => {
+const filterStoriesByPopularity = (stories: Story[]) => {
   const compareStoriesScoresDesc = (story1: Story, story2: Story) =>
     story2.score - story1.score;
 
@@ -29,10 +21,10 @@ const getPopularStories = (stories: Story[]) => {
 
   return sortedStoriesByScore
     .splice(0, 10)
-    .map((story) => ({ ...story, highlightedFeature: "popular" }));
+    .map((story) => ({ ...story, highlightedFeature: NewsType.POPULAR }));
 };
 
-const getRecentStories = (stories: Story[]) => {
+const filterStoriesByCreationTime = (stories: Story[]) => {
   const compareStoriesCreationDateDesc = (story1: Story, story2: Story) =>
     story2.time - story1.time;
 
@@ -40,7 +32,7 @@ const getRecentStories = (stories: Story[]) => {
 
   return sortedStoriesByTime
     .splice(0, 10)
-    .map((story) => ({ ...story, highlightedFeature: "recent" }));
+    .map((story) => ({ ...story, highlightedFeature: NewsType.RECENT }));
 };
 
 const fetchStoriesIds = async () => {
@@ -99,56 +91,77 @@ const diffMinutes = (dt2: Date, dt1: Date) => {
 };
 
 const doDatesDiffMoreThan = (
-  from: Date,
-  expirationDate: Date,
+  from: Date | null,
+  expirationDate: Date | null,
   acceptedDiffInMinutes: number = 5
 ): boolean | null => {
-  if (!from || !expirationDate) {
-    return null;
-  }
-  return diffMinutes(expirationDate, from) > acceptedDiffInMinutes;
+  return from && expirationDate
+    ? diffMinutes(expirationDate, from) > acceptedDiffInMinutes
+    : null;
 };
 
-const getStories = async (filter: NewsType) => {
+const getContentLastUpdateDate = (
+  timestamps: ContentValidityTimestamps,
+  filter: NewsType
+) => {
+  switch (filter) {
+    case NewsType.POPULAR:
+      return timestamps.popularStoriesLastUpdated;
+
+    case NewsType.RECENT:
+      return timestamps.recentStoriesLastUpdated;
+
+    case NewsType.HIGHLIGHT:
+      return timestamps.highlightStoryLastUpdated;
+
+    default:
+      throw new Error(`Non-existent type of news: ${filter}`);
+  }
+};
+
+const fetchPopulatedStories = async () => {
+  const storiesIds = await fetchStoriesIds();
+
+  let allFetchedStoriesSets: Story[][] = [];
+
+  const chunks = chunk(storiesIds, 20);
+  for (const chunk of chunks) {
+    const storiesResponse = await Promise.allSettled(
+      chunk.map(fetchStoryPromise)
+    );
+
+    const storiesSet = storiesResponse
+      .filter(isFulfilled)
+      .map((s) => s?.value.data);
+
+    allFetchedStoriesSets.push(storiesSet);
+  }
+
+  return allFetchedStoriesSets.flat();
+};
+
+const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
   try {
     const now = new Date();
 
     const timestamps = await ContentValidityTimestampsModel.find({});
 
-    const contentLastUpdateDate =
-      filter === NewsType.POPULAR
-        ? timestamps[0].popularStoriesLastUpdated
-        : timestamps[0].recentStoriesLastUpdated;
+    const contentLastUpdateDate = getContentLastUpdateDate(
+      timestamps[0],
+      filter
+    );
     const isContentObsolete = doDatesDiffMoreThan(now, contentLastUpdateDate);
 
     if (isContentObsolete === false) {
       return await StoryModel.find({ highlightedFeature: filter });
     }
 
-    const storiesIds = await fetchStoriesIds();
+    const allFetchedStories = await fetchPopulatedStories();
 
-    let allFetchedStoriesSets: Story[][] = [];
-    const chunks = chunk(storiesIds, 10);
-
-    for (const chunk of chunks) {
-      const storiesResponse = await Promise.allSettled(
-        chunk.map(fetchStoryPromise)
-      );
-
-      const storiesSet = storiesResponse
-        .filter(isFulfilled)
-        .map((s) => s?.value.data);
-
-      allFetchedStoriesSets.push(storiesSet);
-    }
-
-    const allFetchedStories = allFetchedStoriesSets.flat();
     const filteredFetchedStories =
       filter === NewsType.POPULAR
-        ? getPopularStories(allFetchedStories)
-        : getRecentStories(allFetchedStories);
-
-    const storedStories = await StoryModel.insertMany(filteredFetchedStories);
+        ? filterStoriesByPopularity(allFetchedStories)
+        : filterStoriesByCreationTime(allFetchedStories);
 
     if (filter === NewsType.POPULAR) {
       timestamps[0].popularStoriesLastUpdated = now;
@@ -156,7 +169,17 @@ const getStories = async (filter: NewsType) => {
       timestamps[0].recentStoriesLastUpdated = now;
     }
 
-    await timestamps[0].save();
+    const results = await Promise.allSettled([
+      StoryModel.insertMany(filteredFetchedStories),
+      timestamps[0].save(),
+    ]);
+
+    if (isRejected(results[0])) {
+      throw new Error("Error occured trying to store new stories");
+    }
+
+    const storedStories = results[0].value;
+
     return storedStories;
   } catch (error) {
     logger.error(error);
@@ -170,7 +193,10 @@ const getHighlightStory = async () => {
     const timestamps = await ContentValidityTimestampsModel.find({});
 
     const highlightedStoryTTL = 60;
-    const contentLastUpdateDate = timestamps[0].highlightStoryLastUpdated;
+    const contentLastUpdateDate = getContentLastUpdateDate(
+      timestamps[0],
+      NewsType.HIGHLIGHT
+    );
     const isContentObsolete = doDatesDiffMoreThan(
       now,
       contentLastUpdateDate,
@@ -178,7 +204,7 @@ const getHighlightStory = async () => {
     );
 
     if (isContentObsolete === false) {
-      return await StoryModel.find({ highlightedFeature: "highlight" });
+      return await StoryModel.find({ highlightedFeature: NewsType.HIGHLIGHT });
     }
 
     const storiesIds = await fetchStoriesIds();
@@ -190,16 +216,26 @@ const getHighlightStory = async () => {
     const metadata = await getStoryArticleMetadata(story.url);
 
     await StoryModel.deleteMany({
-      highlightedFeature: "highlight",
+      highlightedFeature: NewsType.HIGHLIGHT,
     });
-    const newHighlightStory = await StoryModel.create({
+    const newHighlightStoryPromise = StoryModel.create({
       ...story,
       metadata,
-      highlightedFeature: "highlight",
+      highlightedFeature: NewsType.HIGHLIGHT,
     });
 
     timestamps[0].highlightStoryLastUpdated = now;
-    await timestamps[0].save();
+
+    const results = await Promise.allSettled([
+      newHighlightStoryPromise,
+      timestamps[0].save(),
+    ]);
+
+    if (isRejected(results[0])) {
+      throw new Error("Error occured trying to store new stories");
+    }
+
+    const newHighlightStory = results[0].value;
 
     return newHighlightStory;
   } catch (error) {
@@ -207,8 +243,65 @@ const getHighlightStory = async () => {
   }
 };
 
-const refreshStories = () => {
-  return;
+const refreshStories = async () => {
+  const allFetchedStories = await fetchPopulatedStories();
+  const randomIndex = Math.floor(Math.random() * allFetchedStories.length);
+  const randomStory = allFetchedStories[randomIndex];
+
+  const results = await Promise.allSettled([
+    StoryModel.deleteMany({}),
+    new Promise((resolve, reject) => {
+      // get recent
+      const allFetchedRecentStories =
+        filterStoriesByCreationTime(allFetchedStories);
+      // get popular
+      const allFetchedPopularStories =
+        filterStoriesByPopularity(allFetchedStories);
+
+      resolve({
+        popular: allFetchedPopularStories,
+        recent: allFetchedRecentStories,
+      });
+    }),
+    getStoryArticleMetadata(randomStory.url),
+  ]);
+
+  // get recent
+  const allFetchedRecentStories = isFulfilled(results[1])
+    ? results[1].value?.recent
+    : [];
+  filterStoriesByCreationTime(allFetchedStories);
+  // get popular
+  const allFetchedPopularStories = isFulfilled(results[1])
+    ? results[1].value?.popular
+    : [];
+
+  // get highlight metadata
+  const metadata = isFulfilled(results[2]) ? results[2].value : {};
+
+  const createStoriesPromise = StoryModel.insertMany([
+    ...allFetchedRecentStories,
+    ...allFetchedPopularStories,
+    {
+      ...randomStory,
+      metadata,
+      highlightedFeature: NewsType.HIGHLIGHT,
+    },
+  ]);
+
+  // update timestamps
+  const now = Date.now();
+  const updateTimestampsPromise =
+    ContentValidityTimestampsModel.findOneAndUpdate(
+      {},
+      {
+        recentStoriesLastUpdated: now,
+        popularStoriesLastUpdated: now,
+        highlightStoryLastUpdated: now,
+      }
+    );
+
+  await Promise.allSettled([createStoriesPromise, updateTimestampsPromise]);
 };
 
 export { getStories, getHighlightStory, refreshStories };

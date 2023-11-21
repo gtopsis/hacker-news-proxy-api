@@ -1,4 +1,4 @@
-import { Story } from "../types/interfaces";
+import { NewsType, Story } from "../types/interfaces";
 import { model, Schema } from "mongoose";
 
 const storySchema: Schema = new Schema(
@@ -16,7 +16,6 @@ const storySchema: Schema = new Schema(
     },
     descendants: {
       type: Number,
-      required: true,
     },
     kids: {
       type: [Number],
@@ -37,7 +36,7 @@ const storySchema: Schema = new Schema(
     },
     highlightedFeature: {
       type: String,
-      enum: ["recent", "popular", "highlight"],
+      enum: NewsType,
       required: true,
     },
     metadata: {
