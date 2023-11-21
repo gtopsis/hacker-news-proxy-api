@@ -1,9 +1,9 @@
 import express, { Express, Request, Response, Application } from "express";
 const helmet = require("helmet");
 import cors from "cors";
-import newsRouter from "../router";
+import newsRouter from "../routes/NewsRouter";
+import apiDocRouter from "../routes/apiDocRouter";
 import httpLogger from "../utils/httpLogger";
-import { getAPIDocs } from "../controllers/DocsController";
 
 const app: Application = express();
 
@@ -15,6 +15,6 @@ app.use(httpLogger);
 
 // routes
 app.use("/news", newsRouter);
-app.get("/api-doc", getAPIDocs);
+app.use("/", apiDocRouter);
 
 export default app;

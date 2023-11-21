@@ -3,7 +3,7 @@ import {
   getHighlighNewController,
   refreshNewsController,
   getNewsController,
-} from "./controllers/NewsController";
+} from "../controllers/NewsController";
 
 const newsRouter = express.Router();
 enum Routes {
