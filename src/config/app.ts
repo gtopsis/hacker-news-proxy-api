@@ -3,6 +3,7 @@ const helmet = require("helmet");
 import cors from "cors";
 import newsRouter from "../router";
 import httpLogger from "../utils/httpLogger";
+import { getAPIDocs } from "../controllers/DocsController";
 
 const app: Application = express();
 
@@ -12,7 +13,8 @@ app.use(cors());
 app.use(express.json());
 app.use(httpLogger);
 
-// routesvscode
+// routes
 app.use("/news", newsRouter);
+app.get("/api-doc", getAPIDocs);
 
 export default app;

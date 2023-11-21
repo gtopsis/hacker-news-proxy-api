@@ -1,0 +1,94 @@
+openapi: 3.0.0
+info:
+  title: API
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:6868
+    description: Production only. API serving news from hacker-news public API
+  - url: http://localhost:8080
+    description: Development only. API serving news from hacker-news public API
+
+paths:
+  /news:
+    get:
+      summary: Returns a list of stories.
+      description: Returns a new(every 5 minutes) list of top 10 recent/popular stories from the hacker-news list.
+      parameters:
+        - in: query
+          name: type
+          description: Type of stories.
+          schema:
+            type: string
+            enum: [recent, popular]
+          required: true
+
+      responses:
+        "200": # status code
+          description: List of stories of the specified type.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArrayOfStories"
+
+  /news/highlight:
+    get:
+      summary: Returns a highlight new.
+      description: Returns a new (every hour), randomly chosen, story from the hacker-news list.
+      responses:
+        "200": # status code
+          description: List of stories of the specified type.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Story"
+
+  /news/refresh:
+    post:
+      summary: Updates the content.
+      description: Fetch new list of popular, recent stories as well as a highlighted one.
+      responses:
+        "200": # status code
+          description: Content successfully updated.
+
+  /api-doc:
+    get:
+      summary: Get API doc in YAML format.
+      responses:
+        "200": # status code
+          description: File downloaded.
+
+components:
+  schemas:
+    ArrayOfStories:
+      type: array
+      items:
+        $ref: "#/components/schemas/Story"
+    Story:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Title of the story.
+        by:
+          type: string
+          description: Author of the article.
+        descendants:
+          type: number
+        id:
+          type: number
+        kids:
+          type: array
+          items:
+            type: number
+        score:
+          type: number
+        time:
+          type: number
+        type:
+          type: string
+        url:
+          type: string
+        highlightedFeature:
+          type: string
+          enum: ["recent", "popular"]
