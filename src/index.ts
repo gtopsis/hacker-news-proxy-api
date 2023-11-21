@@ -5,17 +5,15 @@ import { connectDB } from "./config/db";
 import ContentValidityTimestampsModel from "./models/ContentValidityTimestamps";
 
 const createContentValidityTimestamps = async () => {
-  const existingDocs = await ContentValidityTimestampsModel.find({});
+  await ContentValidityTimestampsModel.deleteMany({});
 
-  if (existingDocs.length === 0) {
-    const contentValidityTimestamps = new ContentValidityTimestampsModel({
-      recentStoriesLastUpdated: null,
-      popularStoriesLastUpdated: null,
-      highlightStoryLastUpdated: null,
-    });
+  const contentValidityTimestamps = new ContentValidityTimestampsModel({
+    recentStoriesLastUpdated: new Date("1970-01-01"),
+    popularStoriesLastUpdated: new Date("1970-01-01"),
+    highlightStoryLastUpdated: new Date("1970-01-01"),
+  });
 
-    await ContentValidityTimestampsModel.create(contentValidityTimestamps);
-  }
+  await ContentValidityTimestampsModel.create(contentValidityTimestamps);
 };
 
 const server = app.listen(port, async () => {
