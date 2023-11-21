@@ -4,8 +4,6 @@ import { port } from "./config/config-env";
 import { connectDB } from "./config/db";
 import ContentValidityTimestampsModel from "./models/ContentValidityTimestamps";
 
-console.log(process.env.MONGODB_DOCKER_PORT);
-
 const createContentValidityTimestamps = async () => {
   const existingDocs = await ContentValidityTimestampsModel.find({});
 

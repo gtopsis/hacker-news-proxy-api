@@ -1,4 +1,4 @@
-import express, { NextFunction } from "express";
+import express from "express";
 import {
   getHighlighNewController,
   refreshNewsController,

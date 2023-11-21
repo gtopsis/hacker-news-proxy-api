@@ -170,10 +170,7 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
       throw new Error("Error fetching timestamp and/or existing stories");
     }
 
-    const contentLastUpdateDate = getContentLastUpdateDate(
-      timestamp,
-      filter
-    );
+    const contentLastUpdateDate = getContentLastUpdateDate(timestamp, filter);
     const isContentObsolete = doDatesDiffMoreThan(now, contentLastUpdateDate);
 
     if (isContentObsolete === false) {
@@ -212,20 +209,22 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
   }
 };
 
-const getHighlightStory = async ():Promise<Story> => {
+const getHighlightStory = async (): Promise<Story> => {
   try {
     const now = new Date();
 
     const results1 = await Promise.allSettled([
-      ContentValidityTimestampsModel.findOne({},{},{'created_at:-1'}),
+      ContentValidityTimestampsModel.findOne({}, {}, { created_at: -1 }),
       StoryModel.findOne({ highlightedFeature: NewsType.HIGHLIGHT }),
     ]);
 
-    const timestamp = isFulfilled(results1[0]) ? (results1[0].value) : null;
-    const existingStory = isFulfilled(results1[1]) ? (results1[1].value ) : null;
+    const timestamp = isFulfilled(results1[0]) ? results1[0].value : null;
+    const existingStory = isFulfilled(results1[1]) ? results1[1].value : null;
 
     if (!timestamp || !existingStory) {
-      throw new Error("Error fetching timestamps and/or existing highlight story");
+      throw new Error(
+        "Error fetching timestamps and/or existing highlight story"
+      );
     }
 
     const highlightedStoryTTL = 60;
