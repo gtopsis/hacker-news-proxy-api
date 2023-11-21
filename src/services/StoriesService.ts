@@ -152,7 +152,17 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
   try {
     const now = new Date();
 
-    const timestamps = await ContentValidityTimestampsModel.find({});
+    const results1 = await Promise.allSettled([
+      ContentValidityTimestampsModel.find({}),
+      StoryModel.find({ highlightedFeature: filter }),
+    ]);
+
+    const timestamps = isFulfilled(results1[0]) ? results1[0].value : null;
+    const existingStories = isFulfilled(results1[1]) ? results1[1].value : null;
+
+    if (!timestamps) {
+      throw new Error("Error fetching timestamps");
+    }
 
     const contentLastUpdateDate = getContentLastUpdateDate(
       timestamps[0],
@@ -161,7 +171,7 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
     const isContentObsolete = doDatesDiffMoreThan(now, contentLastUpdateDate);
 
     if (isContentObsolete === false) {
-      return await StoryModel.find({ highlightedFeature: filter });
+      return existingStories;
     }
 
     const allFetchedStories = await fetchPopulatedStories();
@@ -177,18 +187,18 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
       timestamps[0].recentStoriesLastUpdated = now;
     }
 
-    const results = await Promise.allSettled([
+    const results2 = await Promise.allSettled([
       StoryModel.insertMany(filteredFetchedStories),
       timestamps[0].save(),
     ]);
 
-    if (isRejected(results[0])) {
+    if (isRejected(results2[0])) {
       throw new Error("Error occured trying to store new stories");
     }
 
-    const storedStories = results[0].value;
+    const newStories = results2[0].value;
 
-    return storedStories;
+    return newStories;
   } catch (error) {
     logger.error(error);
   }
@@ -198,7 +208,17 @@ const getHighlightStory = async () => {
   try {
     const now = new Date();
 
-    const timestamps = await ContentValidityTimestampsModel.find({});
+    const results1 = await Promise.allSettled([
+      ContentValidityTimestampsModel.find({}),
+      StoryModel.findOne({ highlightedFeature: NewsType.HIGHLIGHT }),
+    ]);
+
+    const timestamps = isFulfilled(results1[0]) ? results1[0].value : null;
+    const existingStory = isFulfilled(results1[1]) ? results1[1].value : null;
+
+    if (!timestamps) {
+      throw new Error("Error fetching timestamps");
+    }
 
     const highlightedStoryTTL = 60;
     const contentLastUpdateDate = getContentLastUpdateDate(
@@ -212,11 +232,7 @@ const getHighlightStory = async () => {
     );
 
     if (isContentObsolete === false) {
-      const existings = await StoryModel.find({
-        highlightedFeature: NewsType.HIGHLIGHT,
-      });
-
-      return existings[0];
+      return existingStory;
     }
 
     const storiesIds = await fetchStoriesIds();
@@ -224,7 +240,7 @@ const getHighlightStory = async () => {
     const randomIndex = Math.floor(Math.random() * storiesIds.length);
     const randomStoryId = storiesIds[randomIndex];
 
-    const results1 = await Promise.allSettled([
+    const results2 = await Promise.allSettled([
       new Promise(async (resolve, reject) => {
         const story = await fetchStoryById(randomStoryId);
         const metadata = await getStoryArticleMetadata(story.url);
@@ -236,9 +252,9 @@ const getHighlightStory = async () => {
       }),
     ]);
 
-    const story = isFulfilled(results1[0]) ? results1[0].value.story : null;
-    const metadata = isFulfilled(results1[0])
-      ? results1[0].value.mettadata
+    const story = isFulfilled(results2[0]) ? results2[0].value.story : null;
+    const metadata = isFulfilled(results2[0])
+      ? results2[0].value.metadata
       : null;
 
     const newHighlightStoryPromise = StoryModel.create({
@@ -249,16 +265,16 @@ const getHighlightStory = async () => {
 
     timestamps[0].highlightStoryLastUpdated = now;
 
-    const results2 = await Promise.allSettled([
+    const results3 = await Promise.allSettled([
       newHighlightStoryPromise,
       timestamps[0].save(),
     ]);
 
-    if (isRejected(results2[0])) {
+    if (isRejected(results3[0])) {
       throw new Error("Error occured trying to store new stories");
     }
 
-    const newHighlightStory = results2[0].value;
+    const newHighlightStory = results3[0].value;
 
     return newHighlightStory;
   } catch (error) {
@@ -282,7 +298,6 @@ const refreshStories = async () => {
   const allFetchedRecentStories = isFulfilled(results[1])
     ? results[1].value
     : [];
-  filterStoriesByCreationTime(allFetchedStories);
   // get popular
   const allFetchedPopularStories = isFulfilled(results[2])
     ? results[2].value
