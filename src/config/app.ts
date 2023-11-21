@@ -4,6 +4,7 @@ import cors from "cors";
 import newsRouter from "../routes/NewsRouter";
 import apiDocRouter from "../routes/apiDocRouter";
 import httpLogger from "../utils/httpLogger";
+import errorHandler from "../middlewares/error";
 
 const app: Application = express();
 
@@ -16,5 +17,7 @@ app.use(httpLogger);
 // routes
 app.use("/news", newsRouter);
 app.use("/", apiDocRouter);
+
+app.use(errorHandler);
 
 export default app;
