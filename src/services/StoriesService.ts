@@ -159,19 +159,19 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
   const now = new Date();
   try {
     const results1 = await Promise.allSettled([
-      ContentValidityTimestampsModel.find({}),
+      ContentValidityTimestampsModel.findOne({}, {}, { created_at: -1 }),
       StoryModel.find({ highlightedFeature: filter }),
     ]);
 
-    const timestamps = isFulfilled(results1[0]) ? results1[0].value : null;
+    const timestamp = isFulfilled(results1[0]) ? results1[0].value : null;
     const existingStories = isFulfilled(results1[1]) ? results1[1].value : null;
 
-    if (!timestamps) {
-      throw new Error("Error fetching timestamps");
+    if (!timestamp || !existingStories) {
+      throw new Error("Error fetching timestamp and/or existing stories");
     }
 
     const contentLastUpdateDate = getContentLastUpdateDate(
-      timestamps[0],
+      timestamp,
       filter
     );
     const isContentObsolete = doDatesDiffMoreThan(now, contentLastUpdateDate);
@@ -188,14 +188,14 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
         : await filterStoriesByCreationTime(allFetchedStories);
 
     if (filter === NewsType.POPULAR) {
-      timestamps[0].popularStoriesLastUpdated = now;
+      timestamp.popularStoriesLastUpdated = now;
     } else {
-      timestamps[0].recentStoriesLastUpdated = now;
+      timestamp.recentStoriesLastUpdated = now;
     }
 
     const results2 = await Promise.allSettled([
       StoryModel.insertMany(filteredFetchedStories),
-      timestamps[0].save(),
+      timestamp.save(),
     ]);
 
     if (isRejected(results2[0])) {
@@ -212,25 +212,25 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
   }
 };
 
-const getHighlightStory = async () => {
+const getHighlightStory = async ():Promise<Story> => {
   try {
     const now = new Date();
 
     const results1 = await Promise.allSettled([
-      ContentValidityTimestampsModel.find({}),
+      ContentValidityTimestampsModel.findOne({},{},{'created_at:-1'}),
       StoryModel.findOne({ highlightedFeature: NewsType.HIGHLIGHT }),
     ]);
 
-    const timestamps = isFulfilled(results1[0]) ? results1[0].value : null;
-    const existingStory = isFulfilled(results1[1]) ? results1[1].value : null;
+    const timestamp = isFulfilled(results1[0]) ? (results1[0].value) : null;
+    const existingStory = isFulfilled(results1[1]) ? (results1[1].value ) : null;
 
-    if (!timestamps) {
-      throw new Error("Error fetching timestamps");
+    if (!timestamp || !existingStory) {
+      throw new Error("Error fetching timestamps and/or existing highlight story");
     }
 
     const highlightedStoryTTL = 60;
     const contentLastUpdateDate = getContentLastUpdateDate(
-      timestamps[0],
+      timestamp,
       NewsType.HIGHLIGHT
     );
     const isContentObsolete = doDatesDiffMoreThan(
@@ -249,12 +249,7 @@ const getHighlightStory = async () => {
     const randomStoryId = storiesIds[randomIndex];
 
     const results2 = await Promise.allSettled([
-      new Promise(async (resolve, reject) => {
-        const story = await fetchStoryById(randomStoryId);
-        const metadata = await getStoryArticleMetadata(story.url);
-
-        resolve({ story, metadata });
-      }),
+      fetchStoryWithMetadata(randomStoryId),
       StoryModel.deleteMany({
         highlightedFeature: NewsType.HIGHLIGHT,
       }),
@@ -271,11 +266,11 @@ const getHighlightStory = async () => {
       highlightedFeature: NewsType.HIGHLIGHT,
     });
 
-    timestamps[0].highlightStoryLastUpdated = now;
+    timestamp.highlightStoryLastUpdated = now;
 
     const results3 = await Promise.allSettled([
       newHighlightStoryPromise,
-      timestamps[0].save(),
+      timestamp.save(),
     ]);
 
     if (isRejected(results3[0])) {
