@@ -1,7 +1,7 @@
 # credits: https://www.bezkoder.com/docker-compose-nodejs-mongodb/
 services:
   mongodb:
-    container_name: hacker_news_proxy-api_db_container
+    container_name: hacker_news_proxy_api_db_container
     image: mongo:5.0.2
     restart: always
     env_file: ./.env
@@ -10,8 +10,6 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD
     ports:
       - $MONGODB_LOCAL_PORT:$MONGODB_DOCKER_PORT
-    volumes:
-      - db:/data/db
 
   app:
     container_name: hacker_news_proxy_api_container
@@ -30,6 +28,3 @@ services:
       - DB_PORT=$MONGODB_DOCKER_PORT
     stdin_open: true
     tty: true
-
-volumes:
-  db:
