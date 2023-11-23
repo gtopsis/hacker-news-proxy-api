@@ -283,7 +283,7 @@ const getHighlightStory = async (): Promise<Story> => {
     ? butchJobsResults2[0].value.metadata
     : null;
 
-  const newHighlightStoryPromise = StoryModel.create({
+  const createHighlightStoryPromise = StoryModel.create({
     ...story,
     metadata,
     highlightedFeature: NewsType.HIGHLIGHT,
@@ -293,7 +293,7 @@ const getHighlightStory = async (): Promise<Story> => {
 
   try {
     butchJobsResults3 = await Promise.allSettled([
-      newHighlightStoryPromise,
+      createHighlightStoryPromise,
       timestamp.save(),
     ]);
   } catch (error) {

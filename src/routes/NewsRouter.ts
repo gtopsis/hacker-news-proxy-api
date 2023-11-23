@@ -1,6 +1,6 @@
 import express from "express";
 import {
-  getHighlighNewController,
+  getHighlightNewController,
   refreshNewsController,
   getNewsController,
 } from "../controllers/NewsController";
@@ -14,7 +14,7 @@ enum Routes {
 
 newsRouter.get(Routes.FETCH_NEWS, getNewsController);
 
-newsRouter.get(Routes.FETCH_HIGHLIGHT_NEW, getHighlighNewController);
+newsRouter.get(Routes.FETCH_HIGHLIGHT_NEW, getHighlightNewController);
 
 newsRouter.post(Routes.REFRESH_NEWS, refreshNewsController);
 

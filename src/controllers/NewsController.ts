@@ -1,16 +1,14 @@
-import { NextFunction } from "express";
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import {
   getHighlightStory,
   getStories,
   refreshStories,
 } from "../services/StoriesService";
-import { NewsType } from "../types/interfaces";
+import { NewsType, Story } from "../types/interfaces";
+import { HttpStatusCode } from "axios";
 
-enum HTTP_STATUS_CODE {
-  SUCCESS = 200,
-  WRONG_REQUEST = 404,
-}
+const handleResponse = <T>(res: Response, data?: T) =>
+  res.status(HttpStatusCode.Ok).send(data);
 
 const getNewsController = async (
   request: Request,
@@ -19,7 +17,7 @@ const getNewsController = async (
 ) => {
   const newsType = request.query.type as NewsType;
   if (newsType !== NewsType.POPULAR && newsType !== NewsType.RECENT) {
-    response.status(HTTP_STATUS_CODE.WRONG_REQUEST);
+    response.status(HttpStatusCode.BadRequest);
 
     return next({
       error:
@@ -30,7 +28,7 @@ const getNewsController = async (
 
   const news = await getStories(newsType);
 
-  response.status(HTTP_STATUS_CODE.SUCCESS).json(news);
+  handleResponse<unknown[]>(response, news);
 };
 
 const getHighlightNewController = async (
@@ -40,7 +38,7 @@ const getHighlightNewController = async (
 ) => {
   const highlightNew = await getHighlightStory();
 
-  response.status(HTTP_STATUS_CODE.SUCCESS).json(highlightNew);
+  handleResponse<Story>(response, highlightNew);
 };
 
 const refreshNewsController = async (
@@ -50,11 +48,7 @@ const refreshNewsController = async (
 ) => {
   await refreshStories();
 
-  response.status(HTTP_STATUS_CODE.SUCCESS).json();
+  handleResponse<unknown>(response);
 };
 
-export {
-  getNewsController,
-  getHighlightNewController as getHighlighNewController,
-  refreshNewsController,
-};
+export { getNewsController, getHighlightNewController, refreshNewsController };
