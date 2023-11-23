@@ -152,47 +152,55 @@ const fetchPopulatedStories = async (): Promise<Story[]> => {
 
 const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
   const now = new Date();
+  let butchJobsResults1 = [];
+  let butchJobsResults2 = [];
+
   try {
-    const butchJobsResults1 = await Promise.allSettled([
+    butchJobsResults1 = await Promise.allSettled([
       fetchStoredStoriesExpirationIntervalsRequest(),
       fetchStoriesOfTypeRequest(filter),
     ]);
+  } catch (error) {
+    throw error;
+  }
 
-    const timestamp = isFulfilled(butchJobsResults1[0])
-      ? butchJobsResults1[0].value
-      : null;
-    const existingStories = isFulfilled(butchJobsResults1[1])
-      ? butchJobsResults1[1].value
-      : null;
+  const timestamp = isFulfilled(butchJobsResults1[0])
+    ? butchJobsResults1[0].value
+    : null;
+  const existingStories = isFulfilled(butchJobsResults1[1])
+    ? butchJobsResults1[1].value
+    : null;
 
-    if (!timestamp || !existingStories) {
-      throw new Error("Error fetching timestamp and/or existing stories");
-    }
+  if (!timestamp || !existingStories) {
+    throw new Error("Error fetching timestamp and/or existing stories");
+  }
 
-    const contentLastUpdateDate = getContentLastUpdateDate(timestamp, filter);
-    const isContentObsolete = doDatesDiffMoreThan(now, contentLastUpdateDate);
+  const contentLastUpdateDate = getContentLastUpdateDate(timestamp, filter);
+  const isContentObsolete = doDatesDiffMoreThan(now, contentLastUpdateDate);
 
-    if (isContentObsolete === false) {
-      return existingStories;
-    }
+  if (isContentObsolete === false) {
+    return existingStories;
+  }
 
-    const allFetchedStories = await fetchPopulatedStories();
+  const allFetchedStories = await fetchPopulatedStories();
 
-    const filteredFetchedStories =
-      filter === NewsType.POPULAR
-        ? await filterStoriesByPopularity(allFetchedStories, numberOfTopStories)
-        : await filterStoriesByCreationTime(
-            allFetchedStories,
-            numberOfTopStories
-          );
+  const filteredFetchedStories =
+    filter === NewsType.POPULAR
+      ? await filterStoriesByPopularity(allFetchedStories, numberOfTopStories)
+      : await filterStoriesByCreationTime(
+          allFetchedStories,
+          numberOfTopStories
+        );
 
-    if (filter === NewsType.POPULAR) {
-      timestamp.popularStoriesLastUpdated = now;
-    } else {
-      timestamp.recentStoriesLastUpdated = now;
-    }
+  if (filter === NewsType.POPULAR) {
+    timestamp.popularStoriesLastUpdated = now;
+  } else {
+    timestamp.recentStoriesLastUpdated = now;
+  }
 
-    const butchJobsResults2 = await Promise.allSettled([
+  let newStories = [];
+  try {
+    butchJobsResults2 = await Promise.allSettled([
       insertStoriesRequest(filteredFetchedStories),
       timestamp.save(),
     ]);
@@ -201,97 +209,104 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
       throw new Error("Error occured trying to store new stories");
     }
 
-    const newStories = butchJobsResults2[0].value;
-
-    return newStories;
+    newStories = butchJobsResults2[0].value;
   } catch (error) {
-    logger.error(error);
-
     throw error;
   }
+
+  return newStories;
 };
 
 const getHighlightStory = async (): Promise<Story> => {
-  try {
-    const now = new Date();
+  const now = new Date();
+  let butchJobsResults1 = [];
+  let butchJobsResults2 = [];
+  let butchJobsResults3 = [];
 
-    const butchJobsResults1 = await Promise.allSettled([
+  try {
+    butchJobsResults1 = await Promise.allSettled([
       fetchStoredStoriesExpirationIntervalsRequest(),
       fetchStoriesOfTypeRequest(NewsType.HIGHLIGHT),
     ]);
+  } catch (error) {
+    throw error;
+  }
 
-    const timestamp = isFulfilled(butchJobsResults1[0])
-      ? butchJobsResults1[0].value
-      : null;
-    const existingStory = isFulfilled(butchJobsResults1[1])
-      ? butchJobsResults1[1].value[0]
-      : null;
+  const timestamp = isFulfilled(butchJobsResults1[0])
+    ? butchJobsResults1[0].value
+    : null;
+  const existingStory = isFulfilled(butchJobsResults1[1])
+    ? butchJobsResults1[1].value[0]
+    : null;
 
-    if (!timestamp || !existingStory) {
-      throw new Error(
-        "Error fetching timestamps and/or existing highlight story"
-      );
-    }
-
-    const highlightedStoryTTL = 60;
-    const contentLastUpdateDate = getContentLastUpdateDate(
-      timestamp,
-      NewsType.HIGHLIGHT
+  if (!timestamp || !existingStory) {
+    throw new Error(
+      "Error fetching timestamps and/or existing highlight story"
     );
-    const isContentObsolete = doDatesDiffMoreThan(
-      now,
-      contentLastUpdateDate,
-      highlightedStoryTTL
-    );
+  }
 
-    if (isContentObsolete === false) {
-      return existingStory;
-    }
+  const highlightedStoryTTL = 60;
+  const contentLastUpdateDate = getContentLastUpdateDate(
+    timestamp,
+    NewsType.HIGHLIGHT
+  );
+  const isContentObsolete = doDatesDiffMoreThan(
+    now,
+    contentLastUpdateDate,
+    highlightedStoryTTL
+  );
 
-    const storiesIds = await fetchStoriesIds();
+  if (isContentObsolete === false) {
+    return existingStory;
+  }
 
-    const randomIndex = Math.floor(Math.random() * storiesIds.length);
-    const randomStoryId = storiesIds[randomIndex];
+  const storiesIds = await fetchStoriesIds();
 
-    const butchJobsResults2 = await Promise.allSettled([
+  const randomIndex = Math.floor(Math.random() * storiesIds.length);
+  const randomStoryId = storiesIds[randomIndex];
+
+  try {
+    butchJobsResults2 = await Promise.allSettled([
       fetchStoryWithArticleMetadata(randomStoryId),
       StoryModel.deleteMany({
         highlightedFeature: NewsType.HIGHLIGHT,
       }),
     ]);
+  } catch (error) {
+    throw error;
+  }
 
-    const story = isFulfilled(butchJobsResults2[0])
-      ? butchJobsResults2[0].value.story
-      : null;
-    const metadata = isFulfilled(butchJobsResults2[0])
-      ? butchJobsResults2[0].value.metadata
-      : null;
+  const story = isFulfilled(butchJobsResults2[0])
+    ? butchJobsResults2[0].value.story
+    : null;
+  const metadata = isFulfilled(butchJobsResults2[0])
+    ? butchJobsResults2[0].value.metadata
+    : null;
 
-    const newHighlightStoryPromise = StoryModel.create({
-      ...story,
-      metadata,
-      highlightedFeature: NewsType.HIGHLIGHT,
-    });
+  const newHighlightStoryPromise = StoryModel.create({
+    ...story,
+    metadata,
+    highlightedFeature: NewsType.HIGHLIGHT,
+  });
 
-    timestamp.highlightStoryLastUpdated = now;
+  timestamp.highlightStoryLastUpdated = now;
 
-    const butchJobsResults3 = await Promise.allSettled([
+  try {
+    butchJobsResults3 = await Promise.allSettled([
       newHighlightStoryPromise,
       timestamp.save(),
     ]);
-
-    if (isRejected(butchJobsResults3[0])) {
-      throw new Error("Error occured trying to store new stories");
-    }
-
-    const newHighlightStory = butchJobsResults3[0].value;
-
-    return newHighlightStory;
   } catch (error) {
-    logger.error(error);
-
     throw error;
   }
+
+  if (isRejected(butchJobsResults3[0])) {
+    throw new Error("Error occured trying to store new stories");
+  }
+
+  const newHighlightStory = butchJobsResults3[0].value;
+
+  return newHighlightStory;
 };
 
 const refreshStories = async () => {
@@ -299,49 +314,56 @@ const refreshStories = async () => {
   const randomIndex = Math.floor(Math.random() * allFetchedStories.length);
   const randomStory = allFetchedStories[randomIndex];
 
+  let butchJobsResults = [];
+
   try {
-    const butchJobsResults = await Promise.allSettled([
+    butchJobsResults = await Promise.allSettled([
       StoryModel.deleteMany({}),
       filterStoriesByCreationTime(allFetchedStories, numberOfTopStories),
       filterStoriesByPopularity(allFetchedStories, numberOfTopStories),
       getStoryArticleMetadata(randomStory.url),
     ]);
+  } catch (error) {
+    throw error;
+  }
 
-    // get recent
-    const allFetchedRecentStories: Story[] = isFulfilled(butchJobsResults[1])
-      ? butchJobsResults[1].value
-      : [];
-    filterStoriesByCreationTime(allFetchedStories);
-    // get popular
-    const allFetchedPopularStories: Story[] = isFulfilled(butchJobsResults[2])
-      ? butchJobsResults[2].value
-      : [];
+  // get recent
+  const allFetchedRecentStories: Story[] = isFulfilled(butchJobsResults[1])
+    ? butchJobsResults[1].value
+    : [];
+  filterStoriesByCreationTime(allFetchedStories);
+  // get popular
+  const allFetchedPopularStories: Story[] = isFulfilled(butchJobsResults[2])
+    ? butchJobsResults[2].value
+    : [];
 
-    // get highlight metadata
-    const metadata: Partial<StorySourceArticleMetadata> = isFulfilled(
-      butchJobsResults[3]
-    )
-      ? butchJobsResults[3].value
-      : {};
+  // get highlight metadata
+  const metadata: Partial<StorySourceArticleMetadata> = isFulfilled(
+    butchJobsResults[3]
+  )
+    ? butchJobsResults[3].value
+    : {};
 
-    // update timestamps
-    const now = Date.now();
-    const updateTimestampsPromise =
-      ContentValidityTimestampsModel.findOneAndUpdate(
-        {},
-        {
-          recentStoriesLastUpdated: now,
-          popularStoriesLastUpdated: now,
-          highlightStoryLastUpdated: now,
-        }
-      );
+  // update timestamps
+  const now = Date.now();
+  const updateTimestampsPromise =
+    ContentValidityTimestampsModel.findOneAndUpdate(
+      {},
+      {
+        recentStoriesLastUpdated: now,
+        popularStoriesLastUpdated: now,
+        highlightStoryLastUpdated: now,
+      }
+    );
 
-    // store stories of all 'types'
-    const newHighlightStory = {
-      ...randomStory,
-      metadata,
-      highlightedFeature: NewsType.HIGHLIGHT,
-    };
+  // store stories of all 'types'
+  const newHighlightStory = {
+    ...randomStory,
+    metadata,
+    highlightedFeature: NewsType.HIGHLIGHT,
+  };
+
+  try {
     await Promise.allSettled([
       insertStoriesRequest([
         ...allFetchedRecentStories,
@@ -351,8 +373,6 @@ const refreshStories = async () => {
       updateTimestampsPromise,
     ]);
   } catch (error) {
-    logger.error(error);
-
     throw error;
   }
 };
