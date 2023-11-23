@@ -106,6 +106,10 @@ const fetchStoriesOfTypeRequest = (newsType: NewsType) => {
   return StoryModel.find({ highlightedFeature: newsType });
 };
 
+const insertStoriesRequest = (stories: Story[]) => {
+  return StoryModel.insertMany(stories);
+};
+
 const getContentLastUpdateDate = (
   timestamps: ContentValidityTimestamps,
   filter: NewsType
@@ -188,16 +192,16 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
       timestamp.recentStoriesLastUpdated = now;
     }
 
-    const results2 = await Promise.allSettled([
-      StoryModel.insertMany(filteredFetchedStories),
+    const butchJobsResults2 = await Promise.allSettled([
+      insertStoriesRequest(filteredFetchedStories),
       timestamp.save(),
     ]);
 
-    if (isRejected(results2[0])) {
+    if (isRejected(butchJobsResults2[0])) {
       throw new Error("Error occured trying to store new stories");
     }
 
-    const newStories = results2[0].value;
+    const newStories = butchJobsResults2[0].value;
 
     return newStories;
   } catch (error) {
@@ -320,17 +324,6 @@ const refreshStories = async () => {
       ? butchJobsResults[3].value
       : {};
 
-    // store stories of all 'types'
-    const createStoriesPromise = StoryModel.insertMany([
-      ...allFetchedRecentStories,
-      ...allFetchedPopularStories,
-      {
-        ...randomStory,
-        metadata,
-        highlightedFeature: NewsType.HIGHLIGHT,
-      },
-    ]);
-
     // update timestamps
     const now = Date.now();
     const updateTimestampsPromise =
@@ -343,7 +336,20 @@ const refreshStories = async () => {
         }
       );
 
-    await Promise.allSettled([createStoriesPromise, updateTimestampsPromise]);
+    // store stories of all 'types'
+    const newHighlightStory = {
+      ...randomStory,
+      metadata,
+      highlightedFeature: NewsType.HIGHLIGHT,
+    };
+    await Promise.allSettled([
+      insertStoriesRequest([
+        ...allFetchedRecentStories,
+        ...allFetchedPopularStories,
+        newHighlightStory,
+      ]),
+      updateTimestampsPromise,
+    ]);
   } catch (error) {
     logger.error(error);
 
