@@ -6,8 +6,9 @@ import {
 } from "../services/StoriesService";
 import { NewsType, Story } from "../types/interfaces";
 import { HttpStatusCode } from "axios";
+import { APIError } from "../utils/APIError";
 
-const handleResponse = <T>(res: Response, data?: T) =>
+const handleSuccessfullResponse = <T>(res: Response, data?: T) =>
   res.status(HttpStatusCode.Ok).send(data);
 
 const getNewsController = async (
@@ -17,18 +18,19 @@ const getNewsController = async (
 ) => {
   const newsType = request.query.type as NewsType;
   if (newsType !== NewsType.POPULAR && newsType !== NewsType.RECENT) {
-    response.status(HttpStatusCode.BadRequest);
-
-    return next({
-      error:
+    return next(
+      new APIError(
+        "Incorrect param type",
         "Param type should be any of the following values: " +
-        Object.values(NewsType).join(","),
-    });
+          Object.values(NewsType).join(","),
+        HttpStatusCode.BadRequest
+      )
+    );
   }
 
   const news = await getStories(newsType);
 
-  handleResponse<unknown[]>(response, news);
+  handleSuccessfullResponse<unknown[]>(response, news);
 };
 
 const getHighlightNewController = async (
@@ -38,7 +40,7 @@ const getHighlightNewController = async (
 ) => {
   const highlightNew = await getHighlightStory();
 
-  handleResponse<Story>(response, highlightNew);
+  handleSuccessfullResponse<Story>(response, highlightNew);
 };
 
 const refreshNewsController = async (
@@ -48,7 +50,7 @@ const refreshNewsController = async (
 ) => {
   await refreshStories();
 
-  handleResponse<unknown>(response);
+  handleSuccessfullResponse<unknown>(response);
 };
 
 export { getNewsController, getHighlightNewController, refreshNewsController };
