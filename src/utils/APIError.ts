@@ -3,10 +3,12 @@ import { BaseError } from "./baseError";
 
 export class APIError extends BaseError {
   constructor(
-    name: string,
-    public httpCode = HttpStatusCode.InternalServerError,
-    description = "internal server error"
+    public name: string,
+    public description = "internal server error",
+    public httpCode = HttpStatusCode.InternalServerError
   ) {
-    super(name, description);
+    super(name, description, true);
+
+    this.httpCode = httpCode;
   }
 }

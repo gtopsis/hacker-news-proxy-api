@@ -1,7 +1,8 @@
 export class BaseError extends Error {
   constructor(
     public readonly name: string,
-    public readonly description: string
+    public readonly description: string,
+    public readonly isOperational: boolean
   ) {
     super(description);
     Object.setPrototypeOf(this, new.target.prototype);
