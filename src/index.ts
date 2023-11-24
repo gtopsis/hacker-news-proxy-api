@@ -1,13 +1,9 @@
 import app from "./config/app";
-import logger from "./utils/logger";
+import { logger } from "./utils/logger";
 import { port } from "./config/config-env";
 import { connectDB } from "./config/db";
-import StoriesFetchedTimestamps from "./models/StoriesFetchedTimestamps";
 import { errorHandler } from "./utils/errorHandler";
-import {
-  createInitialStoriesFetchedTimestamps,
-  resetStoriesFetchedTimestamps,
-} from "./services/StoriesFetchedTimestampsService";
+import { resetStoriesFetchedTimestamps } from "./services/StoriesFetchedTimestampsService";
 
 const server = app.listen(port, async () => {
   logger.info(`Listening on port ${port}`);

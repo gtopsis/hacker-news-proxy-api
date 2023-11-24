@@ -17,20 +17,23 @@ const getNewsController = async (
   next: NextFunction
 ) => {
   const newsType = request.query.type as NewsType;
-  if (newsType !== NewsType.POPULAR && newsType !== NewsType.RECENT) {
-    return next(
-      new APIError(
+
+  try {
+    if (newsType !== NewsType.POPULAR && newsType !== NewsType.RECENT) {
+      throw new APIError(
         "Incorrect param type",
         "Param type should be any of the following values: " +
           Object.values(NewsType).join(","),
         HttpStatusCode.BadRequest
-      )
-    );
+      );
+    }
+
+    const news = await getStories(newsType);
+
+    handleSuccessfullResponse<unknown[]>(response, news);
+  } catch (error: unknown) {
+    return next(error);
   }
-
-  const news = await getStories(newsType);
-
-  handleSuccessfullResponse<unknown[]>(response, news);
 };
 
 const getHighlightNewController = async (
@@ -38,9 +41,13 @@ const getHighlightNewController = async (
   response: Response,
   next: NextFunction
 ) => {
-  const highlightNew = await getHighlightStory();
+  try {
+    const highlightNew = await getHighlightStory();
 
-  handleSuccessfullResponse<Story>(response, highlightNew);
+    handleSuccessfullResponse<Story>(response, highlightNew);
+  } catch (error: unknown) {
+    return next(error);
+  }
 };
 
 const refreshNewsController = async (
@@ -48,9 +55,13 @@ const refreshNewsController = async (
   response: Response,
   next: NextFunction
 ) => {
-  await refreshStories();
+  try {
+    await refreshStories();
 
-  handleSuccessfullResponse<unknown>(response);
+    handleSuccessfullResponse<unknown>(response);
+  } catch (error: unknown) {
+    return next(error);
+  }
 };
 
 export { getNewsController, getHighlightNewController, refreshNewsController };
