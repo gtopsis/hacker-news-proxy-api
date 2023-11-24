@@ -6,29 +6,54 @@ import {
   StorySourceArticleMetadata,
 } from "../types/interfaces";
 import { http } from "../utils/http";
-import logger from "../utils/logger";
 import { chunk } from "lodash";
 import { load } from "cheerio";
 import StoryModel from "../models/Story";
 import ContentValidityTimestampsModel from "../models/ContentValidityTimestamps";
 import { isFulfilled, isRejected } from "../utils/promises";
 import { APIError } from "../utils/APIError";
+import { doDatesDiffMoreThan } from "../utils/date";
 
 const numberOfTopStories = 10;
+
+const getTopNStoriesBy = (
+  stories: Story[],
+  numberOfTopStories: number,
+  feature: "score" | "time"
+): Story[] => {
+  if (stories.length === 0 || numberOfTopStories === 0) {
+    return [];
+  }
+
+  let storyWithMaxValue: Story = stories[0];
+  let storyWithMaxValueIndex: number = 0;
+  for (let index = 1; index < stories.length; index++) {
+    const element = stories[index];
+
+    if (!storyWithMaxValue) {
+      storyWithMaxValue = element;
+    }
+    if (element[feature] > storyWithMaxValue[feature]) {
+      storyWithMaxValue = element;
+      storyWithMaxValueIndex = index;
+    }
+  }
+  stories.splice(storyWithMaxValueIndex, 1);
+  const smallerValues = getTopNStoriesBy(
+    [...stories], // pass a SHAWLOW copy of the stories' collection
+    numberOfTopStories - 1,
+    feature
+  );
+
+  return [storyWithMaxValue, ...smallerValues];
+};
 
 const filterStoriesByPopularity = async (
   stories: Story[],
   topNStories: number = 10
 ): Promise<Story[]> => {
   return new Promise((resolve, reject) => {
-    const compareStoriesScoresDesc = (story1: Story, story2: Story) =>
-      story2.score - story1.score;
-
-    const sortedStoriesByScore = stories.sort(compareStoriesScoresDesc);
-
-    const topStories: Story[] = sortedStoriesByScore
-      .splice(0, topNStories)
-      .map((story) => ({ ...story, highlightedFeature: NewsType.POPULAR }));
+    const topStories: Story[] = getTopNStoriesBy(stories, topNStories, "score");
 
     resolve(topStories);
   });
@@ -39,14 +64,7 @@ const filterStoriesByCreationTime = (
   topNStories: number = 10
 ): Promise<Story[]> => {
   return new Promise((resolve, reject) => {
-    const compareStoriesCreationDateDesc = (story1: Story, story2: Story) =>
-      story2.time - story1.time;
-
-    const sortedStoriesByTime = stories.sort(compareStoriesCreationDateDesc);
-
-    const topStories: Story[] = sortedStoriesByTime
-      .splice(0, topNStories)
-      .map((story) => ({ ...story, highlightedFeature: NewsType.RECENT }));
+    const topStories: Story[] = getTopNStoriesBy(stories, topNStories, "time");
 
     resolve(topStories);
   });
@@ -162,6 +180,7 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
       fetchStoriesOfTypeRequest(filter),
     ]);
   } catch (error) {
+    // identify the failed operations and revert the successful ones (i.e dn ops)
     throw error;
   }
 
@@ -202,7 +221,12 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
   let newStories = [];
   try {
     butchJobsResults2 = await Promise.allSettled([
-      insertStoriesRequest(filteredFetchedStories),
+      insertStoriesRequest(
+        filteredFetchedStories.map((story) => ({
+          ...story,
+          highlightedFeature: filter,
+        }))
+      ),
       timestamp.save(),
     ]);
 
@@ -212,6 +236,7 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
 
     newStories = butchJobsResults2[0].value;
   } catch (error) {
+    // identify the failed operations and revert the successful ones (i.e dn ops)
     throw error;
   }
 
@@ -230,6 +255,8 @@ const getHighlightStory = async (): Promise<Story> => {
       fetchStoriesOfTypeRequest(NewsType.HIGHLIGHT),
     ]);
   } catch (error) {
+    // identify the failed operations and revert the successful ones (i.e dn ops)
+
     throw error;
   }
 
@@ -274,6 +301,8 @@ const getHighlightStory = async (): Promise<Story> => {
       }),
     ]);
   } catch (error) {
+    // identify the failed operations and revert the successful ones (i.e dn ops)
+
     throw error;
   }
 
@@ -298,6 +327,8 @@ const getHighlightStory = async (): Promise<Story> => {
       timestamp.save(),
     ]);
   } catch (error) {
+    // identify the failed operations and revert the successful ones (i.e dn ops)
+
     throw error;
   }
 
@@ -325,6 +356,8 @@ const refreshStories = async () => {
       getStoryArticleMetadata(randomStory.url),
     ]);
   } catch (error) {
+    // identify the failed operations and revert the successful ones (i.e dn ops)
+
     throw error;
   }
 
@@ -374,6 +407,8 @@ const refreshStories = async () => {
       updateTimestampsPromise,
     ]);
   } catch (error) {
+    // identify the failed operations and revert the successful ones (i.e dn ops)
+
     throw error;
   }
 };

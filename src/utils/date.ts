@@ -4,7 +4,7 @@ const diffMinutes = (dt2: Date, dt1: Date) => {
   return Math.abs(Math.round(diff));
 };
 
-const doDatesDiffMoreThan = (
+export const doDatesDiffMoreThan = (
   fromDate: Date | null,
   expirationDate: Date | null,
   acceptedDiffInMinutes: number = 5
