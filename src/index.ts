@@ -4,24 +4,17 @@ import { port } from "./config/config-env";
 import { connectDB } from "./config/db";
 import StoriesFetchedTimestamps from "./models/StoriesFetchedTimestamps";
 import { errorHandler } from "./utils/errorHandler";
-
-const createInitialStoriesFetchedTimestamps = async () => {
-  const contentValidityTimestamps = new StoriesFetchedTimestamps({
-    recentStoriesLastUpdated: new Date("1970-01-01"),
-    popularStoriesLastUpdated: new Date("1970-01-01"),
-    highlightStoryLastUpdated: new Date("1970-01-01"),
-  });
-
-  await StoriesFetchedTimestamps.create(contentValidityTimestamps);
-};
+import {
+  createInitialStoriesFetchedTimestamps,
+  resetStoriesFetchedTimestamps,
+} from "./services/StoriesFetchedTimestampsService";
 
 const server = app.listen(port, async () => {
   logger.info(`Listening on port ${port}`);
 
   await connectDB();
 
-  await StoriesFetchedTimestamps.deleteMany({});
-  await createInitialStoriesFetchedTimestamps();
+  await resetStoriesFetchedTimestamps();
 });
 
 // get the unhandled rejection (Promises rejected and we don't handle those rejections) and throw it to another fallback handler we already have.

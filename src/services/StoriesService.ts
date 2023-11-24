@@ -9,10 +9,13 @@ import { http } from "../utils/http";
 import { chunk } from "lodash";
 import { load } from "cheerio";
 import StoryModel from "../models/Story";
-import StoriesFetchedTimestampsModel from "../models/StoriesFetchedTimestamps";
 import { isFulfilled, isRejected } from "../utils/promises";
 import { APIError } from "../utils/APIError";
 import { doDatesDiffMoreThan } from "../utils/date";
+import {
+  getStoredStoriesExpirationIntervalsRequest,
+  updateStoriesFetchedTimestampsRequest,
+} from "./StoriesFetchedTimestampsService";
 
 const numberOfTopStories = 10;
 
@@ -90,12 +93,12 @@ const fetchStoryById = async (id: string): Promise<Story> => {
 
 const fetchStoryWithArticleMetadata = async (storyId: string) => {
   const story = await fetchStoryById(storyId);
-  const metadata = await getStoryArticleMetadata(story.url);
+  const metadata = await fetchArticleMetadata(story.url);
 
   return { story, metadata };
 };
 
-const getStoryArticleMetadata = async (
+const fetchArticleMetadata = async (
   url: string
 ): Promise<Partial<StorySourceArticleMetadata>> => {
   const { data } = await http.get(url);
@@ -115,10 +118,6 @@ const getStoryArticleMetadata = async (
   };
 
   return storySourceArticleMetadata;
-};
-
-const fetchStoredStoriesExpirationIntervalsRequest = () => {
-  return StoriesFetchedTimestampsModel.findOne({}, {}, { created_at: -1 });
 };
 
 const fetchStoriesOfTypeRequest = (newsType: NewsType) => {
@@ -176,7 +175,7 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
 
   try {
     butchJobsResults1 = await Promise.allSettled([
-      fetchStoredStoriesExpirationIntervalsRequest(),
+      getStoredStoriesExpirationIntervalsRequest(),
       fetchStoriesOfTypeRequest(filter),
     ]);
   } catch (error) {
@@ -257,7 +256,7 @@ const getHighlightStory = async (): Promise<Story> => {
 
   try {
     butchJobsResults1 = await Promise.allSettled([
-      fetchStoredStoriesExpirationIntervalsRequest(),
+      getStoredStoriesExpirationIntervalsRequest(),
       fetchStoriesOfTypeRequest(NewsType.HIGHLIGHT),
     ]);
   } catch (error) {
@@ -359,7 +358,7 @@ const refreshStories = async () => {
       StoryModel.deleteMany({}),
       filterStoriesByCreationTime(allFetchedStories, numberOfTopStories),
       filterStoriesByPopularity(allFetchedStories, numberOfTopStories),
-      getStoryArticleMetadata(randomStory.url),
+      fetchArticleMetadata(randomStory.url),
     ]);
   } catch (error) {
     // identify the failed operations and revert the successful ones (i.e dn ops)
@@ -386,15 +385,7 @@ const refreshStories = async () => {
 
   // update timestamps
   const now = Date.now();
-  const updateTimestampsPromise =
-    StoriesFetchedTimestampsModel.findOneAndUpdate(
-      {},
-      {
-        recentStoriesLastUpdated: now,
-        popularStoriesLastUpdated: now,
-        highlightStoryLastUpdated: now,
-      }
-    );
+  const updateTimestampsPromise = updateStoriesFetchedTimestampsRequest(now);
 
   // store stories of all 'types'
   const newHighlightStory = {
