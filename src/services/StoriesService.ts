@@ -1,5 +1,5 @@
 import {
-  ContentValidityTimestamps,
+  StoriesFetchedTimestamps,
   NewsType,
   StoriesIds,
   Story,
@@ -9,7 +9,7 @@ import { http } from "../utils/http";
 import { chunk } from "lodash";
 import { load } from "cheerio";
 import StoryModel from "../models/Story";
-import ContentValidityTimestampsModel from "../models/ContentValidityTimestamps";
+import StoriesFetchedTimestampsModel from "../models/StoriesFetchedTimestamps";
 import { isFulfilled, isRejected } from "../utils/promises";
 import { APIError } from "../utils/APIError";
 import { doDatesDiffMoreThan } from "../utils/date";
@@ -118,7 +118,7 @@ const getStoryArticleMetadata = async (
 };
 
 const fetchStoredStoriesExpirationIntervalsRequest = () => {
-  return ContentValidityTimestampsModel.findOne({}, {}, { created_at: -1 });
+  return StoriesFetchedTimestampsModel.findOne({}, {}, { created_at: -1 });
 };
 
 const fetchStoriesOfTypeRequest = (newsType: NewsType) => {
@@ -129,8 +129,8 @@ const insertStoriesRequest = (stories: Story[]) => {
   return StoryModel.insertMany(stories);
 };
 
-const getContentLastUpdateDate = (
-  timestamps: ContentValidityTimestamps,
+const getFetchedDateOfStoryWithType = (
+  timestamps: StoriesFetchedTimestamps,
   filter: NewsType
 ) => {
   switch (filter) {
@@ -195,8 +195,14 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
     throw new APIError("Error fetching timestamp and/or existing stories");
   }
 
-  const contentLastUpdateDate = getContentLastUpdateDate(timestamp, filter);
-  const isContentObsolete = doDatesDiffMoreThan(now, contentLastUpdateDate);
+  const fetchedDateOfStoriesWithType = getFetchedDateOfStoryWithType(
+    timestamp,
+    filter
+  );
+  const isContentObsolete = doDatesDiffMoreThan(
+    now,
+    fetchedDateOfStoriesWithType
+  );
 
   if (isContentObsolete === false) {
     return existingStories;
@@ -274,13 +280,13 @@ const getHighlightStory = async (): Promise<Story> => {
   }
 
   const highlightedStoryTTL = 60;
-  const contentLastUpdateDate = getContentLastUpdateDate(
+  const highlightStoryFetchedDate = getFetchedDateOfStoryWithType(
     timestamp,
     NewsType.HIGHLIGHT
   );
   const isContentObsolete = doDatesDiffMoreThan(
     now,
-    contentLastUpdateDate,
+    highlightStoryFetchedDate,
     highlightedStoryTTL
   );
 
@@ -381,7 +387,7 @@ const refreshStories = async () => {
   // update timestamps
   const now = Date.now();
   const updateTimestampsPromise =
-    ContentValidityTimestampsModel.findOneAndUpdate(
+    StoriesFetchedTimestampsModel.findOneAndUpdate(
       {},
       {
         recentStoriesLastUpdated: now,

@@ -1,7 +1,7 @@
-import { ContentValidityTimestamps } from "../types/interfaces";
+import { StoriesFetchedTimestamps } from "../types/interfaces";
 import { model, Schema } from "mongoose";
 
-const ContentValidityTimestampsSchema: Schema = new Schema(
+const StoriesFetchedTimestampsSchema: Schema = new Schema(
   {
     recentStoriesLastUpdated: { type: Date, default: null },
     popularStoriesLastUpdated: { type: Date, default: null },
@@ -10,7 +10,7 @@ const ContentValidityTimestampsSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-export default model<ContentValidityTimestamps>(
-  "ContentValidityTimestampsModel",
-  ContentValidityTimestampsSchema
+export default model<StoriesFetchedTimestamps>(
+  "StoriesFetchedTimestampsModel",
+  StoriesFetchedTimestampsSchema
 );

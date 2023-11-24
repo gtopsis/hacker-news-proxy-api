@@ -18,7 +18,7 @@ export interface Story {
   url: string;
 }
 
-export interface ContentValidityTimestamps {
+export interface StoriesFetchedTimestamps {
   recentStoriesLastUpdated: Date;
   popularStoriesLastUpdated: Date;
   highlightStoryLastUpdated: Date;
