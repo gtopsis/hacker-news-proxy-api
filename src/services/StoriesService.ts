@@ -12,6 +12,7 @@ import { load } from "cheerio";
 import StoryModel from "../models/Story";
 import ContentValidityTimestampsModel from "../models/ContentValidityTimestamps";
 import { isFulfilled, isRejected } from "../utils/promises";
+import { APIError } from "../utils/APIError";
 
 const numberOfTopStories = 10;
 
@@ -125,7 +126,7 @@ const getContentLastUpdateDate = (
       return timestamps.highlightStoryLastUpdated;
 
     default:
-      throw new Error(`Non-existent type of news: ${filter}`);
+      throw new APIError(`Non-existent type of news: ${filter}`);
   }
 };
 
@@ -172,7 +173,7 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
     : null;
 
   if (!timestamp || !existingStories) {
-    throw new Error("Error fetching timestamp and/or existing stories");
+    throw new APIError("Error fetching timestamp and/or existing stories");
   }
 
   const contentLastUpdateDate = getContentLastUpdateDate(timestamp, filter);
@@ -206,7 +207,7 @@ const getStories = async (filter: Exclude<NewsType, NewsType.HIGHLIGHT>) => {
     ]);
 
     if (isRejected(butchJobsResults2[0])) {
-      throw new Error("Error occured trying to store new stories");
+      throw new APIError("Error occured trying to store new stories");
     }
 
     newStories = butchJobsResults2[0].value;
@@ -240,7 +241,7 @@ const getHighlightStory = async (): Promise<Story> => {
     : null;
 
   if (!timestamp || !existingStory) {
-    throw new Error(
+    throw new APIError(
       "Error fetching timestamps and/or existing highlight story"
     );
   }
@@ -301,7 +302,7 @@ const getHighlightStory = async (): Promise<Story> => {
   }
 
   if (isRejected(butchJobsResults3[0])) {
-    throw new Error("Error occured trying to store new stories");
+    throw new APIError("Error occured trying to store new stories");
   }
 
   const newHighlightStory = butchJobsResults3[0].value;
