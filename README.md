@@ -1,6 +1,6 @@
-# hacker-news proxy api
+# A proxy API for hacker-news API
 
-Implementation of a service that acts as a layer between the source hacker-news and a third-party which provides list of stories.
+A service that acts as a proxy between the services _hacker-news_ and a _third-party_. This proxy service offers an API to retrieve and manage list of stories from the hacker news storage.
 
 ## Technologies and tools
 
@@ -50,7 +50,7 @@ docker compose up --build
 ## Available services (see also **API document**)
 
 - http://localhost:6868/api-docs (API doc with swagger-UI)
-- http://localhost:6868/news?type=recent
-- http://localhost:6868/news?type=popular
-- http://localhost:6868/news/highlight
-- http://localhost:6868/news/refresh (POST request)
+#- http://localhost:6868/news?type=recent
+#- http://localhost:6868/news?type=popular
+#- http://localhost:6868/news/highlight
+#- http://localhost:6868/news/refresh (POST request)
