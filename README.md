@@ -50,7 +50,4 @@ docker compose up --build
 ## Available services (see also **API document**)
 
 - http://localhost:6868/api-docs (API doc with swagger-UI)
-#- http://localhost:6868/news?type=recent
-#- http://localhost:6868/news?type=popular
-#- http://localhost:6868/news/highlight
-#- http://localhost:6868/news/refresh (POST request)
+
